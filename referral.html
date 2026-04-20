@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>RockyTap - الإحالات</title>
+    
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="config.js"></script>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0A0F1A 0%, #05080F 100%);
+            font-family: 'Cairo', sans-serif;
+            min-height: 100vh;
+            padding: 15px;
+            padding-bottom: 80px;
+        }
+        .game-container { max-width: 450px; margin: 0 auto; }
+        
+        .page-title { text-align: center; padding: 20px; color: #00BFFF; font-size: 24px; font-weight: 800; }
+        
+        .stats-row { display: flex; gap: 15px; margin-bottom: 20px; }
+        .stat-card {
+            flex: 1;
+            background: linear-gradient(135deg, rgba(0,30,50,0.6), rgba(0,15,30,0.8));
+            border-radius: 20px;
+            padding: 15px;
+            text-align: center;
+        }
+        .stat-value { font-size: 28px; font-weight: 800; color: #00BFFF; }
+        
+        .referral-link-card {
+            background: rgba(0,0,0,0.4);
+            border-radius: 20px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .link-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .link-container input {
+            flex: 1;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid #00BFFF;
+            border-radius: 50px;
+            padding: 10px;
+            color: #00BFFF;
+            direction: ltr;
+        }
+        .copy-btn, .share-btn {
+            padding: 8px 16px;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+        }
+        .copy-btn { background: #00BFFF; color: white; }
+        .share-btn { background: #25D366; color: white; }
+        
+        .referral-item {
+            background: rgba(0,0,0,0.3);
+            border-radius: 16px;
+            padding: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .ref-status { padding: 4px 10px; border-radius: 50px; font-size: 11px; }
+        .status-completed { background: #2ecc7133; color: #2ecc71; }
+        .status-pending { background: #f39c1233; color: #f39c12; }
+        
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.95);
+            padding: 10px 20px;
+            border-top: 1px solid rgba(0,191,255,0.2);
+            max-width: 450px;
+            margin: 0 auto;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+        }
+        .nav-item {
+            text-align: center;
+            color: #666;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        .nav-item i { font-size: 22px; display: block; margin-bottom: 4px; }
+        .nav-item.active { color: #00BFFF; }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <div class="page-title">👥 نظام الإحالات</div>
+    
+    <div class="stats-row">
+        <div class="stat-card"><div class="stat-value" id="totalReferrals">0</div><div>إجمالي</div></div>
+        <div class="stat-card"><div class="stat-value" id="completedReferrals">0</div><div>مكتملة</div></div>
+        <div class="stat-card"><div class="stat-value" id="totalEarned">0</div><div>الأرباح</div></div>
+    </div>
+    
+    <div class="referral-link-card">
+        <div><i class="fas fa-link"></i> رابط الدعوة الخاص بك</div>
+        <div class="link-container">
+            <input type="text" id="referralLink" readonly>
+            <button class="copy-btn" onclick="copyLink()">📋 نسخ</button>
+            <button class="share-btn" onclick="shareLink()">📤 مشاركة</button>
+        </div>
+    </div>
+    
+    <h4 style="color:#00BFFF; margin-bottom: 10px;">📋 قائمة المدعوين</h4>
+    <div id="referralsList"></div>
+</div>
+
+<div class="bottom-nav">
+    <div class="nav-item" onclick="goTo('home')"><i class="fas fa-home"></i><div>الرئيسية</div></div>
+    <div class="nav-item" onclick="goTo('tasks')"><i class="fas fa-tasks"></i><div>المهام</div></div>
+    <div class="nav-item" onclick="goTo('wheel')"><i class="fas fa-gamepad"></i><div>عجلة</div></div>
+    <div class="nav-item" onclick="goTo('ads')"><i class="fas fa-video"></i><div>إعلانات</div></div>
+    <div class="nav-item active" onclick="goTo('referral')"><i class="fas fa-users"></i><div>إحالات</div></div>
+</div>
+
+<script>
+    let currentUserId = null;
+    const BOT_USERNAME = 'RockyTap_bot';
+    
+    async function loadReferralData() {
+        currentUserId = window.currentUserId;
+        if (!currentUserId) {
+            currentUserId = 8268443100;
+        }
+        
+        try {
+            const result = await getReferralStats(currentUserId);
+            if (result && result.success) {
+                document.getElementById('totalReferrals').innerText = result.total || 0;
+                document.getElementById('completedReferrals').innerText = result.granted || 0;
+                document.getElementById('totalEarned').innerText = result.total_points_earned || 0;
+                document.getElementById('referralLink').value = result.referral_link || `https://t.me/${BOT_USERNAME}?start=ref_${currentUserId}`;
+                
+                renderReferrals(result.referrals || []);
+            }
+        } catch(e) {
+            console.error('Error loading referral data:', e);
+            document.getElementById('referralLink').value = `https://t.me/${BOT_USERNAME}?start=ref_${currentUserId}`;
+        }
+    }
+    
+    function renderReferrals(referrals) {
+        let html = '';
+        for (let ref of referrals) {
+            let statusClass = ref.status === 'مكتمل' ? 'status-completed' : 'status-pending';
+            html += `
+                <div class="referral-item">
+                    <div>
+                        <div>👤 ${ref.username}</div>
+                        <div style="font-size:11px;color:#aaa;">📅 ${ref.date}</div>
+                    </div>
+                    <div class="ref-status ${statusClass}">${ref.status}</div>
+                </div>
+            `;
+        }
+        document.getElementById('referralsList').innerHTML = html || '<div style="text-align:center;padding:20px;color:#666;">لا توجد إحالات بعد</div>';
+    }
+    
+    function copyLink() {
+        const link = document.getElementById('referralLink').value;
+        navigator.clipboard.writeText(link).then(() => {
+            showAlert('✅ تم نسخ رابط الإحالة!');
+        });
+    }
+    
+    function shareLink() {
+        const link = document.getElementById('referralLink').value;
+        if (navigator.share) {
+            navigator.share({
+                title: 'انضم إلى RockyTap',
+                text: 'ادعوك للانضمام إلى RockyTap وربح العملات الرقمية!',
+                url: link
+            });
+        } else {
+            copyLink();
+        }
+    }
+    
+    loadReferralData();
+</script>
+
+</body>
+</html>

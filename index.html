@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>RockyTap - الرئيسية</title>
+    
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="config.js"></script>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0A0F1A 0%, #05080F 100%);
+            font-family: 'Cairo', sans-serif;
+            min-height: 100vh;
+            padding: 15px;
+            padding-bottom: 80px;
+        }
+        .game-container { max-width: 450px; margin: 0 auto; }
+        
+        .avatar-custom {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #1a2a3a, #0f1a24);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px;
+            border: 2px solid #00BFFF;
+        }
+        .avatar-custom i { font-size: 45px; color: #00BFFF; }
+        
+        .balance-card {
+            background: linear-gradient(135deg, rgba(0,30,50,0.6), rgba(0,15,30,0.8));
+            border-radius: 24px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .balance-value {
+            font-size: 28px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff, #00BFFF);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .action-btn {
+            background: linear-gradient(135deg, #0f1a24, #0a0f1a);
+            border: 1px solid rgba(0,191,255,0.25);
+            border-radius: 28px;
+            padding: 16px 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .action-btn:hover { transform: translateY(-3px); border-color: #00BFFF; }
+        .action-btn i { font-size: 32px; display: block; margin-bottom: 8px; color: #00BFFF; }
+        
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.95);
+            padding: 10px 20px;
+            border-top: 1px solid rgba(0,191,255,0.2);
+            max-width: 450px;
+            margin: 0 auto;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+        }
+        .nav-item {
+            text-align: center;
+            color: #666;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        .nav-item i { font-size: 22px; display: block; margin-bottom: 4px; }
+        .nav-item.active { color: #00BFFF; }
+        
+        .loading { text-align: center; padding: 40px; color: #aaa; }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <div class="text-center py-4">
+        <div class="avatar-custom">
+            <i class="fas fa-user-circle"></i>
+        </div>
+        <div class="username mt-2" id="usernameDisplay">
+            <i class="fas fa-at"></i> جاري التحميل...
+        </div>
+    </div>
+    
+    <div class="balance-card">
+        <div class="row text-center">
+            <div class="col-6">
+                <i class="fas fa-coins text-warning fs-2"></i>
+                <div class="balance-value" id="tonBalance">0</div>
+                <div class="small text-secondary">TON</div>
+            </div>
+            <div class="col-6">
+                <i class="fas fa-star text-info fs-2"></i>
+                <div class="balance-value" id="pointsBalance">0</div>
+                <div class="small text-secondary">نقاط</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row g-3 mb-4">
+        <div class="col-4">
+            <div class="action-btn" onclick="goTo('tasks')">
+                <i class="fas fa-tasks"></i>
+                <div class="small">المهام</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="action-btn" onclick="goTo('wheel')">
+                <i class="fas fa-gamepad"></i>
+                <div class="small">عجلة</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="action-btn" onclick="goTo('ads')">
+                <i class="fas fa-video"></i>
+                <div class="small">إعلانات</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="action-btn" onclick="goTo('referral')">
+                <i class="fas fa-users"></i>
+                <div class="small">إحالات</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="action-btn" onclick="goTo('giftcode')">
+                <i class="fas fa-gift"></i>
+                <div class="small">أكواد</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="action-btn" onclick="goTo('withdraw')">
+                <i class="fas fa-wallet"></i>
+                <div class="small">سحب</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="bottom-nav">
+    <div class="nav-item active" onclick="goTo('home')"><i class="fas fa-home"></i><div>الرئيسية</div></div>
+    <div class="nav-item" onclick="goTo('tasks')"><i class="fas fa-tasks"></i><div>المهام</div></div>
+    <div class="nav-item" onclick="goTo('wheel')"><i class="fas fa-gamepad"></i><div>عجلة</div></div>
+    <div class="nav-item" onclick="goTo('ads')"><i class="fas fa-video"></i><div>إعلانات</div></div>
+    <div class="nav-item" onclick="goTo('admin')" id="adminNavBtn" style="display:none;"><i class="fas fa-crown"></i><div>أدمن</div></div>
+</div>
+
+<script>
+    let currentUserId = null;
+    const ADMIN_IDS = [8268443100];
+    
+    async function loadUserData() {
+        currentUserId = window.currentUserId || (window.Telegram?.WebApp?.initDataUnsafe?.user?.id);
+        if (!currentUserId) {
+            currentUserId = 8268443100;
+        }
+        
+        try {
+            const result = await getUserData(currentUserId);
+            if (result && result.success) {
+                document.getElementById('tonBalance').innerText = result.ton.toFixed(4);
+                document.getElementById('pointsBalance').innerText = Math.floor(result.points);
+                document.getElementById('usernameDisplay').innerHTML = '<i class="fas fa-at"></i> ' + (result.username || 'مستخدم');
+            }
+        } catch(e) {
+            console.error('Error loading user:', e);
+        }
+        
+        // إظهار زر الأدمن إذا كان المستخدم أدمن
+        if (ADMIN_IDS.includes(currentUserId)) {
+            document.getElementById('adminNavBtn').style.display = 'block';
+        }
+    }
+    
+    loadUserData();
+    setInterval(loadUserData, 30000);
+</script>
+
+</body>
+</html>

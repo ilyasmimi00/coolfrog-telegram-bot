@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>RockyTap - الأكواد</title>
+    
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="config.js"></script>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0A0F1A 0%, #05080F 100%);
+            font-family: 'Cairo', sans-serif;
+            min-height: 100vh;
+            padding: 15px;
+            padding-bottom: 80px;
+        }
+        .game-container { max-width: 450px; margin: 0 auto; }
+        
+        .page-title { text-align: center; padding: 20px; color: #00BFFF; font-size: 24px; font-weight: 800; }
+        
+        .stats-card {
+            background: linear-gradient(135deg, rgba(0,30,50,0.6), rgba(0,15,30,0.8));
+            border-radius: 20px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .stats-value { font-size: 28px; font-weight: 800; color: #FFD700; }
+        
+        .code-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .code-input input {
+            flex: 1;
+            padding: 12px;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid #00BFFF;
+            border-radius: 16px;
+            color: white;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .redeem-btn {
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            border: none;
+            padding: 12px;
+            border-radius: 60px;
+            color: #1a1a2e;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .code-item {
+            background: rgba(0,0,0,0.3);
+            border-radius: 16px;
+            padding: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.95);
+            padding: 10px 20px;
+            border-top: 1px solid rgba(0,191,255,0.2);
+            max-width: 450px;
+            margin: 0 auto;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+        }
+        .nav-item {
+            text-align: center;
+            color: #666;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        .nav-item i { font-size: 22px; display: block; margin-bottom: 4px; }
+        .nav-item.active { color: #00BFFF; }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <div class="page-title">🎁 الأكواد الترويجية</div>
+    
+    <div class="stats-card">
+        <div>إجمالي المكافآت</div>
+        <div class="stats-value" id="totalRewards">0</div>
+    </div>
+    
+    <div class="code-input">
+        <input type="text" id="giftCode" placeholder="XXXX-XXXX" maxlength="9">
+        <button class="redeem-btn" onclick="redeemCode()">🎁 تفعيل</button>
+    </div>
+    
+    <h4 style="color:#00BFFF; margin-bottom: 10px;">📋 الأكواد المستخدمة</h4>
+    <div id="codesList"></div>
+</div>
+
+<div class="bottom-nav">
+    <div class="nav-item" onclick="goTo('home')"><i class="fas fa-home"></i><div>الرئيسية</div></div>
+    <div class="nav-item" onclick="goTo('tasks')"><i class="fas fa-tasks"></i><div>المهام</div></div>
+    <div class="nav-item" onclick="goTo('wheel')"><i class="fas fa-gamepad"></i><div>عجلة</div></div>
+    <div class="nav-item" onclick="goTo('ads')"><i class="fas fa-video"></i><div>إعلانات</div></div>
+    <div class="nav-item active" onclick="goTo('giftcode')"><i class="fas fa-gift"></i><div>أكواد</div></div>
+</div>
+
+<script>
+    let currentUserId = null;
+    let usedCodes = [];
+    let totalRewards = 0;
+    
+    function loadData() {
+        currentUserId = window.currentUserId;
+        if (!currentUserId) {
+            currentUserId = 8268443100;
+        }
+        
+        const saved = localStorage.getItem(`giftCodes_${currentUserId}`);
+        if (saved) {
+            const data = JSON.parse(saved);
+            usedCodes = data.usedCodes || [];
+            totalRewards = data.totalRewards || 0;
+            updateDisplay();
+        }
+    }
+    
+    function updateDisplay() {
+        document.getElementById('totalRewards').innerText = totalRewards;
+        
+        let html = '';
+        for (let code of usedCodes) {
+            html += `
+                <div class="code-item">
+                    <div>
+                        <div>🎫 <code>${code.code}</code></div>
+                        <div style="font-size:11px;color:#aaa;">📅 ${code.date}</div>
+                    </div>
+                    <div style="color:#FFD700;">💰 +${code.reward}</div>
+                </div>
+            `;
+        }
+        document.getElementById('codesList').innerHTML = html || '<div style="text-align:center;padding:20px;color:#666;">لا توجد أكواد مستخدمة بعد</div>';
+    }
+    
+    function saveData() {
+        localStorage.setItem(`giftCodes_${currentUserId}`, JSON.stringify({
+            usedCodes: usedCodes,
+            totalRewards: totalRewards
+        }));
+    }
+    
+    async function redeemCode() {
+        let code = document.getElementById('giftCode').value.trim().toUpperCase();
+        if (!code) {
+            showAlert('⚠️ الرجاء إدخال الكود');
+            return;
+        }
+        
+        const alreadyUsed = usedCodes.some(c => c.code === code);
+        if (alreadyUsed) {
+            showAlert('⚠️ لقد استخدمت هذا الكود من قبل!');
+            document.getElementById('giftCode').value = '';
+            return;
+        }
+        
+        showAlert('🔍 جاري التحقق من الكود...');
+        
+        try {
+            const result = await redeemCode(currentUserId, code);
+            
+            if (result && result.success) {
+                const reward = result.reward_points || 0;
+                totalRewards += reward;
+                
+                usedCodes.unshift({
+                    code: code,
+                    reward: reward,
+                    date: new Date().toLocaleDateString('ar-EG')
+                });
+                
+                saveData();
+                updateDisplay();
+                showAlert(`✅ تم تفعيل الكود بنجاح!\n🎁 حصلت على +${reward} نقطة!`);
+                document.getElementById('giftCode').value = '';
+            } else {
+                showAlert('❌ ' + (result?.message || 'كود غير صالح'));
+            }
+        } catch(e) {
+            console.error('Error redeeming code:', e);
+            showAlert('❌ حدث خطأ في التحقق من الكود');
+        }
+    }
+    
+    loadData();
+</script>
+
+</body>
+</html>

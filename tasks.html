@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>RockyTap - المهام</title>
+    
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="config.js"></script>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0A0F1A 0%, #05080F 100%);
+            font-family: 'Cairo', sans-serif;
+            min-height: 100vh;
+            padding: 15px;
+            padding-bottom: 80px;
+        }
+        .game-container { max-width: 450px; margin: 0 auto; }
+        
+        .page-title { text-align: center; padding: 20px; color: #00BFFF; font-size: 24px; font-weight: 800; }
+        
+        .task-card {
+            background: linear-gradient(135deg, rgba(0,20,35,0.7), rgba(0,10,20,0.8));
+            border-radius: 20px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border: 1px solid rgba(0,191,255,0.25);
+        }
+        .task-header { display: flex; align-items: center; gap: 12px; }
+        .task-icon { font-size: 32px; }
+        .task-title { font-weight: bold; }
+        .task-reward { font-size: 12px; color: #FFD700; }
+        .task-btn {
+            background: linear-gradient(135deg, #00BFFF, #0088aa);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 50px;
+            color: white;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .task-btn.completed { background: #2ecc71; cursor: default; opacity: 0.7; }
+        .task-status {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 50px;
+            font-size: 10px;
+            margin-top: 8px;
+        }
+        .status-completed { background: #2ecc7133; color: #2ecc71; }
+        .status-pending { background: #f39c1233; color: #f39c12; }
+        .status-available { background: #00BFFF33; color: #00BFFF; }
+        
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.95);
+            padding: 10px 20px;
+            border-top: 1px solid rgba(0,191,255,0.2);
+            max-width: 450px;
+            margin: 0 auto;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+        }
+        .nav-item {
+            text-align: center;
+            color: #666;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        .nav-item i { font-size: 22px; display: block; margin-bottom: 4px; }
+        .nav-item.active { color: #00BFFF; }
+        
+        .loading { text-align: center; padding: 40px; color: #aaa; }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <div class="page-title">📋 المهام</div>
+    <div id="tasksList" class="tasks-list"></div>
+</div>
+
+<div class="bottom-nav">
+    <div class="nav-item" onclick="goTo('home')"><i class="fas fa-home"></i><div>الرئيسية</div></div>
+    <div class="nav-item active" onclick="goTo('tasks')"><i class="fas fa-tasks"></i><div>المهام</div></div>
+    <div class="nav-item" onclick="goTo('wheel')"><i class="fas fa-gamepad"></i><div>عجلة</div></div>
+    <div class="nav-item" onclick="goTo('ads')"><i class="fas fa-video"></i><div>إعلانات</div></div>
+    <div class="nav-item" onclick="goTo('admin')"><i class="fas fa-crown"></i><div>أدمن</div></div>
+</div>
+
+<script>
+    let currentUserId = null;
+    let tasks = [];
+    let userTaskStatus = {};
+    
+    async function loadTasks() {
+        currentUserId = window.currentUserId;
+        if (!currentUserId) {
+            currentUserId = 8268443100;
+        }
+        
+        const container = document.getElementById('tasksList');
+        container.innerHTML = '<div class="loading">📡 جاري التحميل...</div>';
+        
+        try {
+            const result = await getTasks(currentUserId);
+            if (result && result.success) {
+                tasks = result.tasks;
+                loadUserTaskStatus();
+            } else {
+                tasks = [
+                    { id: 1, title: "قناة RockyTap", icon: "📺", channel_link: "https://t.me/RockyTap", reward_points: 100, reward_ton: 0, user_status: "available" },
+                    { id: 2, title: "قناة الأخبار", icon: "📰", channel_link: "https://t.me/CryptoNews", reward_points: 150, reward_ton: 0.01, user_status: "available" }
+                ];
+                renderTasks();
+            }
+        } catch(e) {
+            console.error('Error loading tasks:', e);
+            tasks = [
+                { id: 1, title: "قناة RockyTap", icon: "📺", channel_link: "https://t.me/RockyTap", reward_points: 100, reward_ton: 0, user_status: "available" }
+            ];
+            renderTasks();
+        }
+    }
+    
+    function loadUserTaskStatus() {
+        const saved = localStorage.getItem(`task_status_${currentUserId}`);
+        if (saved) {
+            userTaskStatus = JSON.parse(saved);
+        }
+        // دمج حالة المهام من API
+        for (let task of tasks) {
+            if (task.user_status === 'completed') {
+                userTaskStatus[task.id] = 'completed';
+            } else if (task.user_status === 'pending' && !userTaskStatus[task.id]) {
+                userTaskStatus[task.id] = 'pending';
+            } else if (!userTaskStatus[task.id]) {
+                userTaskStatus[task.id] = 'available';
+            }
+        }
+        renderTasks();
+    }
+    
+    function saveUserTaskStatus() {
+        localStorage.setItem(`task_status_${currentUserId}`, JSON.stringify(userTaskStatus));
+    }
+    
+    function renderTasks() {
+        const container = document.getElementById('tasksList');
+        if (!tasks || tasks.length === 0) {
+            container.innerHTML = '<div class="loading">✨ لا توجد مهام متاحة حالياً</div>';
+            return;
+        }
+        
+        let html = '';
+        for (let task of tasks) {
+            const status = userTaskStatus[task.id] || 'available';
+            const rewardText = task.reward_points > 0 ? `⭐ ${task.reward_points} نقطة` : '';
+            const rewardTonText = task.reward_ton > 0 ? `💰 ${task.reward_ton} تون` : '';
+            const fullReward = [rewardText, rewardTonText].filter(t => t).join(' + ');
+            
+            let statusText = '', statusClass = '', buttonHtml = '';
+            
+            if (status === 'completed') {
+                statusText = '✓ مكتمل';
+                statusClass = 'status-completed';
+                buttonHtml = `<button class="task-btn completed" disabled>✅ تم الإكمال</button>`;
+            } else if (status === 'pending') {
+                statusText = '⏳ قيد الانتظار';
+                statusClass = 'status-pending';
+                buttonHtml = `<button class="task-btn" onclick="verifyTask(${task.id})">✅ تحقق</button>`;
+            } else {
+                statusText = '📌 متاحة';
+                statusClass = 'status-available';
+                buttonHtml = `<button class="task-btn" onclick="goToChannel('${task.channel_link}')">🔗 اذهب</button>`;
+            }
+            
+            html += `
+                <div class="task-card">
+                    <div class="task-header">
+                        <div class="task-icon">${task.icon || '📺'}</div>
+                        <div>
+                            <div class="task-title">${task.title}</div>
+                            <div class="task-reward">${fullReward || '⭐ مكافأة'}</div>
+                        </div>
+                    </div>
+                    ${buttonHtml}
+                    <div class="task-status ${statusClass}">${statusText}</div>
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+    }
+    
+    function goToChannel(link) {
+        // تحديث حالة المهمة إلى pending
+        const taskId = tasks.find(t => t.channel_link === link)?.id;
+        if (taskId && userTaskStatus[taskId] === 'available') {
+            userTaskStatus[taskId] = 'pending';
+            saveUserTaskStatus();
+            renderTasks();
+        }
+        window.open(link, '_blank');
+        showAlert('🔗 تم فتح القناة. بعد الاشتراك، اضغط على زر "تحقق"');
+    }
+    
+    async function verifyTask(taskId) {
+        const task = tasks.find(t => t.id === taskId);
+        if (!task) return;
+        
+        if (userTaskStatus[taskId] === 'completed') {
+            showAlert('✅ لقد حصلت على المكافأة بالفعل!');
+            return;
+        }
+        
+        showAlert('🔍 جاري التحقق من اشتراكك...');
+        
+        try {
+            const result = await completeTask(currentUserId, taskId);
+            
+            if (result && result.success) {
+                userTaskStatus[taskId] = 'completed';
+                saveUserTaskStatus();
+                renderTasks();
+                showAlert(`🎉 مبروك! حصلت على ${task.reward_points} نقطة!`);
+                
+                // تحديث الرصيد في الصفحة الرئيسية
+                if (window.opener) {
+                    window.opener.location.reload();
+                }
+            } else {
+                showAlert('❌ لم يتم التحقق من اشتراكك. تأكد من الاشتراك في القناة ثم حاول مرة أخرى.');
+            }
+        } catch(e) {
+            console.error('Error verifying:', e);
+            showAlert('❌ حدث خطأ في التحقق');
+        }
+    }
+    
+    // تحميل الصفحة
+    loadTasks();
+</script>
+
+</body>
+</html>

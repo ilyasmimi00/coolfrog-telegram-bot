@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>RockyTap - عجلة الحظ</title>
+    
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="config.js"></script>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0A0F1A 0%, #05080F 100%);
+            font-family: 'Cairo', sans-serif;
+            min-height: 100vh;
+            padding: 15px;
+            padding-bottom: 80px;
+        }
+        .game-container { max-width: 450px; margin: 0 auto; }
+        
+        .page-title { text-align: center; padding: 20px; color: #00BFFF; font-size: 24px; font-weight: 800; }
+        
+        .wheel-wrapper { position: relative; width: 280px; height: 280px; margin: 20px auto; }
+        canvas { width: 100%; height: 100%; border-radius: 50%; box-shadow: 0 0 30px rgba(0,191,255,0.3); }
+        .pointer {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 35px solid #00BFFF;
+            z-index: 10;
+        }
+        .spin-btn {
+            display: block;
+            margin: 20px auto;
+            background: linear-gradient(135deg, #00BFFF, #0088aa);
+            border: none;
+            padding: 14px 35px;
+            border-radius: 60px;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        .spin-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .stats-card {
+            background: linear-gradient(135deg, rgba(0,30,50,0.6), rgba(0,15,30,0.8));
+            border-radius: 20px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .stats-value { font-size: 28px; font-weight: 800; color: #FFD700; }
+        
+        .last-result {
+            background: rgba(0,0,0,0.4);
+            border-radius: 16px;
+            padding: 12px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.95);
+            padding: 10px 20px;
+            border-top: 1px solid rgba(0,191,255,0.2);
+            max-width: 450px;
+            margin: 0 auto;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+        }
+        .nav-item {
+            text-align: center;
+            color: #666;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        .nav-item i { font-size: 22px; display: block; margin-bottom: 4px; }
+        .nav-item.active { color: #00BFFF; }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <div class="page-title">🎡 عجلة الحظ</div>
+    
+    <div class="wheel-wrapper">
+        <div class="pointer"></div>
+        <canvas id="wheelCanvas" width="500" height="500"></canvas>
+    </div>
+    
+    <button class="spin-btn" id="spinBtn" onclick="spinWheel()">🔄 ابدأ اللعب</button>
+    
+    <div class="stats-card">
+        <div>المحاولات المتبقية اليوم</div>
+        <div class="stats-value" id="remainingSpins">--</div>
+    </div>
+    
+    <div class="last-result" id="lastResult">🎲 لم تلعب بعد</div>
+</div>
+
+<div class="bottom-nav">
+    <div class="nav-item" onclick="goTo('home')"><i class="fas fa-home"></i><div>الرئيسية</div></div>
+    <div class="nav-item" onclick="goTo('tasks')"><i class="fas fa-tasks"></i><div>المهام</div></div>
+    <div class="nav-item active" onclick="goTo('wheel')"><i class="fas fa-gamepad"></i><div>عجلة</div></div>
+    <div class="nav-item" onclick="goTo('ads')"><i class="fas fa-video"></i><div>إعلانات</div></div>
+    <div class="nav-item" onclick="goTo('admin')"><i class="fas fa-crown"></i><div>أدمن</div></div>
+</div>
+
+<script>
+    let currentUserId = null;
+    let remainingSpins = 0;
+    let spinning = false;
+    let currentAngle = 0;
+    let canvas = null;
+    let ctx = null;
+    
+    const segments = [
+        { name: "10", value: 10, color: "#FF6B6B" },
+        { name: "25", value: 25, color: "#4ECDC4" },
+        { name: "5", value: 5, color: "#45B7D1" },
+        { name: "50", value: 50, color: "#96CEB4" },
+        { name: "15", value: 15, color: "#FFEAA7" },
+        { name: "100", value: 100, color: "#DDA0DD" },
+        { name: "20", value: 20, color: "#98D8C8" },
+        { name: "75", value: 75, color: "#F7B787" }
+    ];
+    
+    async function init() {
+        currentUserId = window.currentUserId;
+        if (!currentUserId) {
+            currentUserId = 8268443100;
+        }
+        
+        initCanvas();
+        await loadWheelData();
+    }
+    
+    async function loadWheelData() {
+        try {
+            const result = await getWheelStatus(currentUserId);
+            if (result && result.success) {
+                remainingSpins = result.remaining_spins || 0;
+            } else {
+                remainingSpins = 3;
+            }
+            updateDisplay();
+        } catch(e) {
+            console.error('Error loading wheel data:', e);
+            remainingSpins = 3;
+            updateDisplay();
+        }
+    }
+    
+    function updateDisplay() {
+        const remainingEl = document.getElementById('remainingSpins');
+        const spinBtn = document.getElementById('spinBtn');
+        if (remainingEl) remainingEl.innerText = remainingSpins;
+        if (spinBtn) spinBtn.disabled = remainingSpins <= 0;
+    }
+    
+    function initCanvas() {
+        canvas = document.getElementById('wheelCanvas');
+        if (!canvas) return;
+        const container = canvas.parentElement;
+        const size = Math.min(container.clientWidth, 280);
+        canvas.width = size;
+        canvas.height = size;
+        canvas.style.width = `${size}px`;
+        canvas.style.height = `${size}px`;
+        ctx = canvas.getContext('2d');
+        drawWheel();
+    }
+    
+    function drawWheel() {
+        if (!ctx) return;
+        const size = canvas.width;
+        const centerX = size / 2;
+        const centerY = size / 2;
+        const radius = size / 2;
+        const anglePerSegment = (Math.PI * 2) / segments.length;
+        
+        ctx.clearRect(0, 0, size, size);
+        
+        for (let i = 0; i < segments.length; i++) {
+            const startAngle = i * anglePerSegment + currentAngle;
+            const endAngle = (i + 1) * anglePerSegment + currentAngle;
+            
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+            ctx.fillStyle = segments[i].color;
+            ctx.fill();
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(startAngle + anglePerSegment / 2);
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#1a1a2e";
+            ctx.font = `bold ${Math.max(10, size / 25)}px Cairo`;
+            ctx.fillText(segments[i].name, radius * 0.65, 5);
+            ctx.restore();
+        }
+        
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius * 0.15, 0, Math.PI * 2);
+        ctx.fillStyle = "#0A0F1A";
+        ctx.fill();
+        ctx.strokeStyle = "#00BFFF";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+    }
+    
+    async function spinWheel() {
+        if (spinning) return;
+        if (remainingSpins <= 0) {
+            showAlert('⚠️ لقد استنفدت جميع محاولاتك اليوم! عود غداً.');
+            return;
+        }
+        
+        spinning = true;
+        const spinBtn = document.getElementById('spinBtn');
+        if (spinBtn) spinBtn.disabled = true;
+        
+        const randomIndex = Math.floor(Math.random() * segments.length);
+        const segmentAngle = (Math.PI * 2) / segments.length;
+        const targetAngle = (Math.PI * 2) - (randomIndex * segmentAngle) - (segmentAngle / 2);
+        const spins = 8;
+        const newAngle = targetAngle + (Math.PI * 2 * spins);
+        
+        let start = null;
+        const duration = 3000;
+        const startAngle = currentAngle;
+        
+        function animate(timestamp) {
+            if (!start) start = timestamp;
+            const elapsed = timestamp - start;
+            const progress = Math.min(1, elapsed / duration);
+            const easeOut = 1 - Math.pow(1 - progress, 3);
+            currentAngle = startAngle + (newAngle - startAngle) * easeOut;
+            drawWheel();
+            
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                currentAngle = newAngle % (Math.PI * 2);
+                drawWheel();
+                claimReward(segments[randomIndex].value);
+            }
+        }
+        
+        requestAnimationFrame(animate);
+    }
+    
+    async function claimReward(reward) {
+        try {
+            const result = await spinWheel(currentUserId);
+            
+            if (result && result.success) {
+                remainingSpins = result.remaining;
+                updateDisplay();
+                
+                const lastResult = document.getElementById('lastResult');
+                if (lastResult) {
+                    lastResult.innerHTML = `🎉 مبروك! ربحت ${reward} نقطة! 🎉`;
+                }
+                showAlert(`🎡 مبروك! ربحت ${reward} نقطة!`);
+            } else {
+                // محاكاة للاختبار
+                remainingSpins--;
+                updateDisplay();
+                const lastResult = document.getElementById('lastResult');
+                if (lastResult) {
+                    lastResult.innerHTML = `🎉 مبروك! ربحت ${reward} نقطة! 🎉`;
+                }
+                showAlert(`🎡 مبروك! ربحت ${reward} نقطة!`);
+            }
+        } catch(e) {
+            console.error('Error claiming reward:', e);
+            remainingSpins--;
+            updateDisplay();
+            showAlert(`🎡 مبروك! ربحت ${reward} نقطة!`);
+        }
+        
+        spinning = false;
+        const spinBtn = document.getElementById('spinBtn');
+        if (spinBtn && remainingSpins > 0) {
+            spinBtn.disabled = false;
+        }
+    }
+    
+    window.addEventListener('resize', function() { if (canvas) initCanvas(); });
+    init();
+</script>
+
+</body>
+</html>

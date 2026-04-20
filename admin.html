@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>RockyTap - لوحة التحكم</title>
+    
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="config.js"></script>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0A0F1A 0%, #05080F 100%);
+            font-family: 'Cairo', sans-serif;
+            min-height: 100vh;
+            padding: 15px;
+            padding-bottom: 80px;
+        }
+        .game-container { max-width: 450px; margin: 0 auto; }
+        
+        .page-title { text-align: center; padding: 20px; color: #00BFFF; font-size: 24px; font-weight: 800; }
+        
+        .admin-card {
+            background: rgba(0,0,0,0.4);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(0,191,255,0.3);
+        }
+        
+        .admin-btn {
+            background: linear-gradient(135deg, #00BFFF, #0088aa);
+            border: none;
+            padding: 12px;
+            border-radius: 50px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        .admin-btn-danger { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .admin-btn-success { background: linear-gradient(135deg, #2ecc71, #27ae60); }
+        
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid #00BFFF;
+            border-radius: 12px;
+            color: white;
+        }
+        
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.95);
+            padding: 10px 20px;
+            border-top: 1px solid rgba(0,191,255,0.2);
+            max-width: 450px;
+            margin: 0 auto;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+        }
+        .nav-item {
+            text-align: center;
+            color: #666;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        .nav-item i { font-size: 22px; display: block; margin-bottom: 4px; }
+        .nav-item.active { color: #00BFFF; }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <div class="page-title">👑 لوحة التحكم</div>
+    
+    <div class="admin-card">
+        <h4 style="color:#00BFFF;">➕ إضافة رصيد</h4>
+        <input type="text" id="userId" placeholder="معرف المستخدم">
+        <input type="number" id="amount" placeholder="المبلغ">
+        <select id="currency">
+            <option value="ton">تون (TON)</option>
+            <option value="points">نقاط</option>
+        </select>
+        <button class="admin-btn admin-btn-success" onclick="addBalance()">➕ إضافة</button>
+    </div>
+    
+    <div class="admin-card">
+        <h4 style="color:#00BFFF;">✨ إنشاء كود ترويجي</h4>
+        <input type="number" id="codeAmount" placeholder="المبلغ (تون)">
+        <input type="number" id="codeUses" placeholder="عدد الاستخدامات" value="100">
+        <button class="admin-btn" onclick="createCode()">✨ إنشاء كود</button>
+    </div>
+    
+    <div class="admin-card">
+        <h4 style="color:#00BFFF;">💱 إعدادات النظام</h4>
+        <label style="color:#aaa;">سعر الصرف (نقطة = كم تون)</label>
+        <input type="number" id="exchangeRate" value="10">
+        <button class="admin-btn" onclick="saveSettings()">💾 حفظ الإعدادات</button>
+    </div>
+</div>
+
+<div class="bottom-nav">
+    <div class="nav-item" onclick="goTo('home')"><i class="fas fa-home"></i><div>الرئيسية</div></div>
+    <div class="nav-item" onclick="goTo('tasks')"><i class="fas fa-tasks"></i><div>المهام</div></div>
+    <div class="nav-item" onclick="goTo('wheel')"><i class="fas fa-gamepad"></i><div>عجلة</div></div>
+    <div class="nav-item" onclick="goTo('ads')"><i class="fas fa-video"></i><div>إعلانات</div></div>
+    <div class="nav-item active" onclick="goTo('admin')"><i class="fas fa-crown"></i><div>أدمن</div></div>
+</div>
+
+<script>
+    let currentUserId = null;
+    
+    function addBalance() {
+        let userId = document.getElementById('userId').value.trim();
+        let amount = parseFloat(document.getElementById('amount').value);
+        let currency = document.getElementById('currency').value;
+        
+        if (!userId || !amount) {
+            showAlert('⚠️ الرجاء إدخال البيانات');
+            return;
+        }
+        
+        sendToBot('admin_add_balance', { user_id: userId, amount: amount, currency: currency });
+        showAlert(`✅ تم إضافة ${amount} ${currency} للمستخدم ${userId}`);
+        
+        document.getElementById('userId').value = '';
+        document.getElementById('amount').value = '';
+    }
+    
+    function createCode() {
+        let amount = parseFloat(document.getElementById('codeAmount').value);
+        let uses = parseInt(document.getElementById('codeUses').value);
+        
+        if (!amount) {
+            showAlert('⚠️ الرجاء إدخال المبلغ');
+            return;
+        }
+        
+        sendToBot('admin_create_code', { amount: amount, max_uses: uses });
+        showAlert(`✨ تم إنشاء كود ترويجي بقيمة ${amount} تون`);
+        
+        document.getElementById('codeAmount').value = '';
+    }
+    
+    function saveSettings() {
+        let rate = document.getElementById('exchangeRate').value;
+        sendToBot('admin_save_settings', { exchange_rate: rate });
+        showAlert('✅ تم حفظ الإعدادات');
+    }
+</script>
+
+</body>
+</html>
